@@ -5,6 +5,7 @@ Flask backend — loads trained CNN and serves predictions.
 """
 
 import io
+import os
 from flask import Flask, request, jsonify, render_template
 from tensorflow.keras.models import load_model
 from PIL import Image
@@ -17,7 +18,8 @@ CLASS_NAMES = [
     "dog", "frog", "horse", "ship", "truck"
 ]
 
-model = load_model("cnn_model.h5")
+MODEL_PATH = "models/best_model.h5" if os.path.exists("models/best_model.h5") else ("models/cnn_model.h5" if os.path.exists("models/cnn_model.h5") else "cnn_model.h5")
+model = load_model(MODEL_PATH)
 
 @app.route("/")
 def index():

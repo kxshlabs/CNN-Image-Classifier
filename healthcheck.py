@@ -1,40 +1,65 @@
 import io
+import os
 import sys
-from PIL import Image
 import numpy as np
+from PIL import Image
 
 def run_healthcheck():
     results = {}
     
-    # 1. Verify Model file existence
+    # 1. File existence checks
+    files_to_check = [
+        ("models/cnn_model.h5 exists", "models/cnn_model.h5"),
+        ("models/best_model.h5 exists", "models/best_model.h5"),
+        ("models/training_history.npy exists", "models/training_history.npy")
+    ]
+
+    for check_name, filepath in files_to_check:
+        if os.path.exists(filepath):
+            results[f"CHECK: {check_name}"] = "PASS"
+        else:
+            results[f"CHECK: {check_name}"] = f"FAIL (File not found: {filepath})"
+
+    # 2. Model loading check
+    model = None
+    model_path = "models/best_model.h5" if os.path.exists("models/best_model.h5") else ("models/cnn_model.h5" if os.path.exists("models/cnn_model.h5") else "cnn_model.h5")
     try:
         from tensorflow.keras.models import load_model
-        model = load_model("cnn_model.h5")
-        results["Model Load Check"] = "PASS"
+        model = load_model(model_path)
+        results["CHECK: model loads without error"] = "PASS"
     except Exception as e:
-        results["Model Load Check"] = f"FAIL ({e})"
+        results["CHECK: model loads without error"] = f"FAIL ({e})"
 
-    # 2. Test Flask app client endpoints
+    # 3. Model prediction check on random array
+    if model is not None:
+        try:
+            dummy_input = np.random.rand(1, 32, 32, 3).astype("float32")
+            pred = model.predict(dummy_input)
+            if pred.shape == (1, 10):
+                results["CHECK: model.predict on random (1,32,32,3) returns shape (1,10)"] = "PASS"
+            else:
+                results["CHECK: model.predict on random (1,32,32,3) returns shape (1,10)"] = f"FAIL (Shape: {pred.shape})"
+        except Exception as e:
+            results["CHECK: model.predict on random (1,32,32,3) returns shape (1,10)"] = f"FAIL ({e})"
+
+    # 4. Flask app endpoint tests
     try:
         from app import app
         app.config["TESTING"] = True
         client = app.test_client()
 
-        # Check Endpoint: GET /
         res_index = client.get("/")
         if res_index.status_code == 200 and b"CNN_IMAGE_CLASSIFIER" in res_index.data:
-            results["Endpoint GET /"] = "PASS"
+            results["CHECK: Endpoint GET /"] = "PASS"
         else:
-            results["Endpoint GET /"] = f"FAIL (Status: {res_index.status_code})"
+            results["CHECK: Endpoint GET /"] = f"FAIL (Status: {res_index.status_code})"
 
-        # Check Endpoint: POST /predict (No file)
         res_pred_err = client.post("/predict")
         if res_pred_err.status_code == 400 and res_pred_err.json.get("error") == "No image uploaded":
-            results["Endpoint POST /predict (Error Handling)"] = "PASS"
+            results["CHECK: Endpoint POST /predict (Error Handling)"] = "PASS"
         else:
-            results["Endpoint POST /predict (Error Handling)"] = f"FAIL (Status: {res_pred_err.status_code})"
+            results["CHECK: Endpoint POST /predict (Error Handling)"] = f"FAIL (Status: {res_pred_err.status_code})"
 
-        # Check Endpoint: POST /predict (Valid Image)
         img = Image.new("RGB", (32, 32), color="green")
         img_byte_arr = io.BytesIO()
         img.save(img_byte_arr, format="PNG")
@@ -42,12 +67,12 @@ def run_healthcheck():
         
         res_pred = client.post("/predict", data={"image": (img_byte_arr, "test.png")}, content_type="multipart/form-data")
         if res_pred.status_code == 200 and "top_prediction" in res_pred.json:
-            results["Endpoint POST /predict (Valid Request)"] = "PASS"
+            results["CHECK: Endpoint POST /predict (Valid Request)"] = "PASS"
         else:
-            results["Endpoint POST /predict (Valid Request)"] = f"FAIL (Status: {res_pred.status_code})"
+            results["CHECK: Endpoint POST /predict (Valid Request)"] = f"FAIL (Status: {res_pred.status_code})"
 
     except Exception as e:
-        results["Flask App Initialization"] = f"FAIL ({e})"
+        results["CHECK: Flask App Endpoints"] = f"FAIL ({e})"
 
     print("\n--- HEALTH CHECK RESULTS ---")
     all_pass = True
