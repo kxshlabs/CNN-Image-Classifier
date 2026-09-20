@@ -4,236 +4,290 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CNN Image Classifier</title>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg:       #0e0e10;
-      --surface:  #18181c;
-      --surface2: #202026;
-      --border:   #2e2e38;
-      --accent:   #5b8fff;
-      --accent2:  #7effd4;
-      --text:     #e8e8f0;
-      --muted:    #7a7a90;
-    }
-
     body {
-      font-family: 'IBM Plex Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      background-color: #000000;
+      color: #00ff41;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2.5rem 1rem 5rem;
+      padding: 2rem 1rem;
+      position: relative;
+      animation: crtFlicker 0.15s ease-in-out 1;
     }
 
-    /* ── Header ── */
+    /* CRT Flicker on Page Load */
+    @keyframes crtFlicker {
+      0% { opacity: 0.8; }
+      50% { opacity: 1; }
+      75% { opacity: 0.9; }
+      100% { opacity: 1; }
+    }
+
+    /* Scanline Overlay */
+    body::before {
+      content: " ";
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      z-index: 10;
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* Main Container with Slide-up Fade-in */
+    .container {
+      width: 100%;
+      max-width: 700px;
+      border: 1px solid #003b10;
+      border-radius: 2px;
+      padding: 1.5rem;
+      background: #020b03;
+      box-shadow: 0 0 15px rgba(0, 255, 65, 0.15);
+      animation: slideUp 0.5s ease-out forwards;
+      z-index: 1;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header */
     header {
-      width: 100%; max-width: 660px;
-      display: flex; align-items: flex-start; justify-content: space-between;
-      margin-bottom: 2rem; gap: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px dashed #003b10;
+      padding-bottom: 1rem;
     }
-    header h1 { font-size: 1.45rem; font-weight: 500; letter-spacing: -0.02em; }
-    header h1 span { color: var(--accent); }
-    header p  { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-family: 'IBM Plex Mono', monospace; }
-
-    .pill {
-      display: flex; align-items: center; gap: 6px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 6px 14px;
-      font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace;
-      white-space: nowrap; flex-shrink: 0;
+    .header-title {
+      font-size: 1.6rem;
+      font-weight: normal;
+      color: #00ff41;
+      text-shadow: 0 0 5px rgba(0, 255, 65, 0.5);
     }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); }
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      background-color: #00ff41;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
 
-    /* ── Card ── */
-    .card {
-      width: 100%; max-width: 660px;
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; padding: 1.5rem; margin-bottom: 1.2rem;
+    .ascii-tagline {
+      font-size: 0.75rem;
+      color: #00aa2e;
+      margin-top: 8px;
+      white-space: pre-wrap;
     }
 
-    /* ── Upload ── */
+    /* Upload Zone */
     .upload-area {
-      border: 1.5px dashed var(--border); border-radius: 12px;
-      padding: 2.5rem 1rem; text-align: center; cursor: pointer;
-      transition: border-color 0.2s, background 0.2s; position: relative;
+      border: 1px dashed #00ff41;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      background: #000501;
+      transition: background 0.2s, box-shadow 0.2s;
     }
     .upload-area:hover, .upload-area.dragover {
-      border-color: var(--accent); background: rgba(91,143,255,0.04);
+      background: #001204;
+      box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.3);
     }
     .upload-area input[type="file"] {
-      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
     }
-    .upload-icon {
-      width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 12px; font-size: 20px;
+    .upload-text {
+      font-size: 1rem;
+      color: #00ff41;
     }
-    .upload-area h3 { font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
-    .upload-area p  { font-size: 0.78rem; color: var(--muted); }
+    .upload-sub {
+      font-size: 0.8rem;
+      color: #00aa2e;
+      margin-top: 4px;
+    }
 
-    /* ── Preview ── */
+    /* Preview Wrap */
     #preview-wrap {
-      display: none; text-align: center;
-      margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid var(--border);
+      display: none;
+      text-align: center;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #003b10;
     }
     #preview-img {
-      max-height: 200px; max-width: 100%;
-      border-radius: 10px; border: 1px solid var(--border);
+      max-height: 220px;
+      max-width: 100%;
+      border: 1px solid #00ff41;
+      box-shadow: 0 0 8px rgba(0, 255, 65, 0.2);
     }
-    .img-name { font-size: 0.72rem; color: var(--muted); margin-top: 6px; font-family: 'IBM Plex Mono', monospace; }
-
-    #predict-btn {
-      margin-top: 14px;
-      background: var(--accent); color: #fff;
-      border: none; border-radius: 8px;
-      padding: 9px 24px; font-size: 0.85rem;
-      font-family: 'IBM Plex Sans', sans-serif;
-      cursor: pointer; transition: opacity 0.2s;
+    .img-name {
+      font-size: 0.85rem;
+      color: #00aa2e;
+      margin-top: 8px;
     }
-    #predict-btn:hover { opacity: 0.85; }
-    #predict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* ── Loader ── */
-    #loader { display: none; text-align: center; padding: 1.5rem 0; }
-    .spinner {
-      width: 28px; height: 28px; border: 2px solid var(--border);
-      border-top-color: var(--accent); border-radius: 50%;
-      animation: spin 0.7s linear infinite; margin: 0 auto 10px;
+    /* Classify Button */
+    .btn-terminal {
+      display: inline-block;
+      margin-top: 1rem;
+      background: #001a06;
+      color: #00ff41;
+      border: 1px solid #00ff41;
+      padding: 10px 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loader p { font-size: 0.8rem; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+    .btn-terminal:hover {
+      background: #003b10;
+      box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+    }
+    .btn-terminal:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
 
-    /* ── Results ── */
-    #results-wrap { display: none; }
+    /* Progress & Loader */
+    #loader-card {
+      display: none;
+      margin-top: 1.5rem;
+      border-top: 1px dashed #003b10;
+      padding-top: 1rem;
+    }
+    .status-msg {
+      font-size: 0.9rem;
+      color: #00ff41;
+      margin-bottom: 8px;
+      min-height: 1.2em;
+    }
+    .progress-bar-container {
+      font-size: 0.9rem;
+      color: #00ff41;
+      word-break: break-all;
+    }
 
-    .top-box {
-      background: linear-gradient(135deg, rgba(91,143,255,0.1), rgba(126,255,212,0.06));
-      border: 1px solid rgba(91,143,255,0.28);
-      border-radius: 12px; padding: 1rem 1.25rem;
-      display: flex; align-items: center; justify-content: space-between;
+    /* Results Wrap */
+    #results-wrap {
+      display: none;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #003b10;
+    }
+    .typewriter-output {
+      font-size: 1rem;
+      line-height: 1.4;
       margin-bottom: 1.2rem;
-    }
-    .top-name { font-size: 1.4rem; font-weight: 500; color: var(--accent); text-transform: capitalize; }
-    .top-sub  { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
-    .top-conf { font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--accent2); }
-
-    .section-label {
-      font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace;
-      color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
-      margin-bottom: 12px;
+      color: #00ff41;
     }
 
-    /* Bars */
-    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .bar-name {
-      width: 90px; font-size: 0.78rem; color: var(--muted);
-      text-align: right; flex-shrink: 0; text-transform: capitalize;
+    /* Table */
+    .table-header {
+      font-size: 0.85rem;
+      color: #00aa2e;
+      border-bottom: 1px solid #003b10;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+      display: flex;
     }
-    .bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-    .bar-fill  { height: 100%; border-radius: 3px; width: 0; transition: width 0.55s cubic-bezier(.4,0,.2,1); }
-    .bar-pct   { width: 44px; font-size: 0.78rem; font-family: 'IBM Plex Mono', monospace; text-align: right; flex-shrink: 0; }
-
-    /* Info row */
-    .info-row {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; margin-top: 1.2rem; padding-top: 1.2rem;
-      border-top: 1px solid var(--border);
+    .table-row {
+      display: flex;
+      align-items: center;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
     }
-    .info-cell { background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
-    .info-cell .k { font-size: 0.68rem; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
-    .info-cell .v { font-size: 0.9rem; font-weight: 500; margin-top: 3px; }
+    .col-rank { width: 30px; color: #00aa2e; }
+    .col-label { width: 110px; color: #00ff41; text-transform: uppercase; }
+    .col-bar { flex: 1; color: #00ff41; overflow: hidden; white-space: nowrap; margin: 0 10px; }
+    .col-pct { width: 65px; text-align: right; color: #00ff41; }
 
-    /* Reset */
+    /* Footer */
+    footer {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #003b10;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #00aa2e;
+    }
+
     #reset-btn {
-      display: none; margin: 0 auto;
-      background: transparent; border: 1px solid var(--border);
-      color: var(--text); font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 0.82rem; padding: 8px 20px; border-radius: 8px; cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    #reset-btn:hover { border-color: var(--accent); }
-
-    .notice {
-      width: 100%; max-width: 660px; text-align: center;
-      font-size: 0.7rem; color: var(--muted);
-      font-family: 'IBM Plex Mono', monospace; margin-top: 0.5rem;
+      display: none;
+      margin: 1.5rem auto 0;
     }
   </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <h1>CNN <span>Image</span> Classifier</h1>
-    <p>CIFAR-10 · 10 classes · Trained with Keras</p>
-  </div>
-  <div class="pill"><div class="dot"></div>Flask + Python</div>
-</header>
+<div class="container">
+  <header>
+    <div class="header-title">> CNN_IMAGE_CLASSIFIER<span class="cursor">&nbsp;</span></div>
+    <div class="ascii-tagline">
+[SYSTEM: ONLINE]
+[DATASET: CIFAR-10] [ARCHITECTURE: CONV-NET]
+--------------------------------------------</div>
+  </header>
 
-<!-- Upload -->
-<div class="card">
+  <!-- Upload Area -->
   <div class="upload-area" id="drop-zone">
     <input type="file" id="file-input" accept="image/*"/>
-    <div class="upload-icon">&#8679;</div>
-    <h3>Upload an image</h3>
-    <p>Click or drag & drop &nbsp;·&nbsp; JPG, PNG, WebP</p>
+    <div class="upload-text">> DROP_IMAGE_FILE_HERE OR CLICK_TO_BROWSE</div>
+    <div class="upload-sub">SUPPORTED FORMATS: JPG, PNG, WEBP</div>
   </div>
 
   <div id="preview-wrap">
     <img id="preview-img" src="" alt="Preview"/>
-    <p class="img-name" id="img-name">—</p>
-    <button id="predict-btn" onclick="submitImage()">Classify Image</button>
+    <div class="img-name" id="img-name">FILE: NONE</div>
+    <button class="btn-terminal" id="predict-btn" onclick="submitImage()">> [CLASSIFY]_<span class="cursor">&nbsp;</span></button>
   </div>
-</div>
 
-<!-- Loader -->
-<div class="card" id="loader-card" style="display:none;">
-  <div id="loader">
-    <div class="spinner"></div>
-    <p>Running CNN prediction…</p>
+  <!-- Loader -->
+  <div id="loader-card">
+    <div class="status-msg" id="status-msg">> initializing...</div>
+    <div class="progress-bar-container" id="progress-bar">[░░░░░░░░░░░░░░░░░░░░] 0%</div>
   </div>
-</div>
 
-<!-- Results -->
-<div class="card" id="results-wrap">
-  <div class="top-box">
-    <div>
-      <div class="top-name" id="top-name">—</div>
-      <div class="top-sub">Top predicted class</div>
+  <!-- Results -->
+  <div id="results-wrap">
+    <div class="typewriter-output" id="typewriter-output"></div>
+    <div class="table-header">
+      <span class="col-rank">#</span>
+      <span class="col-label">CLASS</span>
+      <span class="col-bar">CONFIDENCE BAR</span>
+      <span class="col-pct">PCT</span>
     </div>
-    <div class="top-conf" id="top-conf">—</div>
+    <div id="table-rows"></div>
   </div>
 
-  <p class="section-label">Top 5 predictions</p>
-  <div id="bars"></div>
+  <button class="btn-terminal" id="reset-btn" onclick="resetUI()">> [CLEAR TERMINAL]</button>
 
-  <div class="info-row">
-    <div class="info-cell"><div class="k">Model</div><div class="v">Custom CNN</div></div>
-    <div class="info-cell"><div class="k">Dataset</div><div class="v">CIFAR-10</div></div>
-    <div class="info-cell"><div class="k">Classes</div><div class="v">10</div></div>
-  </div>
+  <footer>
+    MODEL: CIFAR-10 CNN | KERAS + FLASK | LOCAL INFERENCE
+  </footer>
 </div>
-
-<button id="reset-btn" onclick="resetUI()">&#8635; Try another image</button>
-<p class="notice">Image is sent to your local Flask server · Nothing goes to the internet</p>
 
 <script>
-  const COLORS = ['#5b8fff','#7effd4','#ff8c69','#d87aff','#ffd166'];
   let selectedFile = null;
 
-  // File input
   document.getElementById('file-input').addEventListener('change', function(e) {
     if (e.target.files[0]) showPreview(e.target.files[0]);
   });
 
-  // Drag & drop
   const dropZone = document.getElementById('drop-zone');
-  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
@@ -247,7 +301,7 @@
     const reader = new FileReader();
     reader.onload = e => {
       document.getElementById('preview-img').src = e.target.result;
-      document.getElementById('img-name').textContent = file.name;
+      document.getElementById('img-name').textContent = 'FILE: ' + file.name;
       document.getElementById('preview-wrap').style.display = 'block';
       document.getElementById('results-wrap').style.display = 'none';
       document.getElementById('reset-btn').style.display = 'none';
@@ -255,54 +309,102 @@
     reader.readAsDataURL(file);
   }
 
-  // Send image to Flask
   async function submitImage() {
     if (!selectedFile) return;
 
     document.getElementById('predict-btn').disabled = true;
     document.getElementById('loader-card').style.display = 'block';
     document.getElementById('results-wrap').style.display = 'none';
+    document.getElementById('reset-btn').style.display = 'none';
+
+    // Start simulated terminal progress animation
+    const progressPromise = runTerminalLoader();
 
     const formData = new FormData();
     formData.append('image', selectedFile);
 
     try {
-      const res  = await fetch('/predict', { method: 'POST', body: formData });
+      const res = await fetch('/predict', { method: 'POST', body: formData });
       const data = await res.json();
+      await progressPromise;
 
-      if (data.error) { alert('Error: ' + data.error); return; }
+      if (data.error) {
+        alert('ERROR: ' + data.error);
+        return;
+      }
       showResults(data);
     } catch (err) {
-      alert('Could not connect to Flask server.\nMake sure app.py is running.');
+      alert('CRITICAL ERROR: Could not connect to Flask server.\nEnsure app.py is operational.');
     } finally {
       document.getElementById('loader-card').style.display = 'none';
       document.getElementById('predict-btn').disabled = false;
     }
   }
 
+  function runTerminalLoader() {
+    return new Promise(resolve => {
+      const msgs = [
+        "loading weights...",
+        "preprocessing image...",
+        "running inference...",
+        "computing softmax..."
+      ];
+      const totalSteps = 20;
+      let step = 0;
+
+      const interval = setInterval(() => {
+        step++;
+        const pct = Math.floor((step / totalSteps) * 100);
+        const filled = "█".repeat(step);
+        const empty = "░".repeat(totalSteps - step);
+        document.getElementById('progress-bar').textContent = `[${filled}${empty}] ${pct}%`;
+
+        const msgIdx = Math.min(Math.floor((step - 1) / 5), msgs.length - 1);
+        document.getElementById('status-msg').textContent = `> ${msgs[msgIdx]}`;
+
+        if (step >= totalSteps) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 100); // 20 steps * 100ms = 2 seconds total
+    });
+  }
+
   function showResults(data) {
     document.getElementById('results-wrap').style.display = 'block';
     document.getElementById('reset-btn').style.display = 'block';
 
-    document.getElementById('top-name').textContent = data.top_prediction;
-    document.getElementById('top-conf').textContent = data.confidence.toFixed(1) + '%';
+    const textToType = `>> CLASSIFICATION: ${data.top_prediction.toUpperCase()}\n>> CONFIDENCE: ${data.confidence.toFixed(1)}%`;
+    const typewriterEl = document.getElementById('typewriter-output');
+    typewriterEl.textContent = '';
+    
+    let charIdx = 0;
+    const typeInterval = setInterval(() => {
+      typewriterEl.textContent += textToType[charIdx];
+      charIdx++;
+      if (charIdx >= textToType.length) {
+        clearInterval(typeInterval);
+      }
+    }, 25);
 
-    const barsEl = document.getElementById('bars');
-    barsEl.innerHTML = '';
-    data.all_predictions.forEach((p, i) => {
+    const rowsContainer = document.getElementById('table-rows');
+    rowsContainer.innerHTML = '';
+    const maxBarLength = 20;
+
+    data.all_predictions.forEach((p, idx) => {
       const row = document.createElement('div');
-      row.className = 'bar-row';
+      row.className = 'table-row';
+
+      const numFilled = Math.round((p.confidence / 100) * maxBarLength);
+      const barStr = "█".repeat(numFilled) + "░".repeat(maxBarLength - numFilled);
+
       row.innerHTML = `
-        <span class="bar-name">${p.label}</span>
-        <div class="bar-track">
-          <div class="bar-fill" id="bf${i}" style="background:${COLORS[i]}"></div>
-        </div>
-        <span class="bar-pct">${p.confidence.toFixed(1)}%</span>
+        <span class="col-rank">${idx + 1}.</span>
+        <span class="col-label">${p.label}</span>
+        <span class="col-bar">${barStr}</span>
+        <span class="col-pct">${p.confidence.toFixed(1)}%</span>
       `;
-      barsEl.appendChild(row);
-      setTimeout(() => {
-        document.getElementById('bf' + i).style.width = p.confidence + '%';
-      }, 60 + i * 90);
+      rowsContainer.appendChild(row);
     });
 
     document.getElementById('results-wrap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
