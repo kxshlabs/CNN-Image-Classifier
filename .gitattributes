@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+models/best_model.h5 binary
+models/cnn_model.h5 binary
+    

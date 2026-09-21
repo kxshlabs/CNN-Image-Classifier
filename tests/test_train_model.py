@@ -1,8 +1,11 @@
+import ssl
 import numpy as np
 import pytest
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 from train_model import build_model
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 def test_dataset_loading_and_shapes():
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()

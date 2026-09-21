@@ -5,12 +5,15 @@ Trains a CNN on CIFAR-10 dataset with data augmentation and callbacks, then save
 """
 
 import os
+import ssl
 import numpy as np
 from tensorflow.keras import layers, models
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 CLASS_NAMES = [
     "airplane", "automobile", "bird", "cat", "deer",

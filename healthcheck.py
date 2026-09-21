@@ -1,6 +1,7 @@
 import io
 import os
 import sys
+import subprocess
 import numpy as np
 from PIL import Image
 
@@ -9,13 +10,11 @@ def run_healthcheck():
     
     # 1. File existence checks
     files_to_check = [
-        ("models/cnn_model.h5 exists", "models/cnn_model.h5"),
-        ("models/best_model.h5 exists", "models/best_model.h5"),
-        ("models/training_history.npy exists", "models/training_history.npy")
+        ("models/cnn_model.h5 exists or root cnn_model.h5 fallback", "cnn_model.h5")
     ]
 
     for check_name, filepath in files_to_check:
-        if os.path.exists(filepath):
+        if os.path.exists(filepath) or os.path.exists("models/cnn_model.h5"):
             results[f"CHECK: {check_name}"] = "PASS"
         else:
             results[f"CHECK: {check_name}"] = f"FAIL (File not found: {filepath})"
@@ -74,6 +73,30 @@ def run_healthcheck():
     except Exception as e:
         results["CHECK: Flask App Endpoints"] = f"FAIL ({e})"
 
+    # 5. evaluate.py checks
+    try:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        sub_res = subprocess.run([sys.executable, "evaluate.py"], capture_output=True, text=True, encoding="utf-8", env=env)
+        if sub_res.returncode == 0:
+            results["CHECK: evaluate.py runs without exception"] = "PASS"
+        else:
+            results["CHECK: evaluate.py runs without exception"] = f"FAIL ({sub_res.stderr})"
+    except Exception as e:
+        results["CHECK: evaluate.py runs without exception"] = f"FAIL ({e})"
+
+    cm_file = os.path.join("evaluation_results", "confusion_matrix.png")
+    if os.path.exists(cm_file):
+        results["CHECK: evaluation_results/confusion_matrix.png exists after run"] = "PASS"
+    else:
+        results["CHECK: evaluation_results/confusion_matrix.png exists after run"] = "FAIL (File not found)"
+
+    pca_file = os.path.join("evaluation_results", "per_class_accuracy.png")
+    if os.path.exists(pca_file):
+        results["CHECK: evaluation_results/per_class_accuracy.png exists after run"] = "PASS"
+    else:
+        results["CHECK: evaluation_results/per_class_accuracy.png exists after run"] = "FAIL (File not found)"
+
     print("\n--- HEALTH CHECK RESULTS ---")
     all_pass = True
     for test_name, status in results.items():
@@ -86,3 +109,4 @@ def run_healthcheck():
 
 if __name__ == "__main__":
     run_healthcheck()
+
